@@ -32,8 +32,24 @@ class BinaryNeuronPopulation(Neuron):
     def __init__(self, reference, N=1, threshold=1.0, name="Binary Neuron Population"):
         super().__init__(reference, N, name)
         self.threshold = threshold
-    def update(self, weights, state):
+    def update(self, weights, state, index=None):
         return np.heaviside(np.sum(weights * state) - self.threshold, 0)
+
+class AdaptiveBinaryNeuronPopulation(Neuron):
+    def __init__(self, reference, tau_theta=1, theta_q=0., N=1, threshold=1.0, name="Adaptive Neuron Population"):
+        super().__init__(reference, N, name)
+        self.threshold = threshold
+        self.adaptation = np.zeros(N)
+        self.last_update = np.zeros(N)
+        self.tau_theta = tau_theta
+        self.theta_q = theta_q
+    def update(self, weights, state, index):
+        self.adaptation[index] = self.threshold + (self.adaptation[index] - self.threshold) * np.exp(-(self.reference.sim_steps-self.last_update[index]) / self.tau_theta)
+        value = np.heaviside(np.sum(weights * state) - (self.adaptation[index]), 0)
+        if value == 1:
+            self.adaptation[index] += self.theta_q
+        self.last_update[index] = self.reference.sim_steps
+        return value
 
 
 
@@ -48,9 +64,9 @@ class BackgroundActivity(Neuron):
             self.update = self.update_stochastic
         else:
             self.update = self.update_deterministic
-    def update_stochastic(self, weights=None, state=None):
+    def update_stochastic(self, weights=None, state=None, Index=None):
         return np.random.choice([0, 1], 1) * self.update_deterministic(weights, state)
-    def update_deterministic(self, weights=None, state=None):
+    def update_deterministic(self, weights=None, state=None, Index=None):
         # if activity is a float, set all neurons to this activity
         if isinstance(self.Activity, float):
             return self.Activity
@@ -149,10 +165,13 @@ class BinaryNetwork:
         neuron = np.random.randint(self.N)
         # find the population to which the neuron belongs
         population_idx = np.where((self.LUT[:, 0] <= neuron) & (self.LUT[:, 1] > neuron))[0][0]
+
+        # find the index of the neuron in the population
+        neuronIDX = neuron - self.LUT[population_idx, 0]
         # update the neuron
         if self.state[neuron] == 0:
             self.state[neuron] = self.population[population_idx].update(self.weights[neuron, :],
-                                                                    self.state)
+                                                                    self.state, neuronIDX)
         else:
             self.state[neuron] = 0
         self.sim_steps += 1
