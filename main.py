@@ -1,37 +1,31 @@
 from ClusteredEI_network import *
+import BinaryNetwork
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
 if __name__ == "__main__":
-    # Q = 5
-    # N_E = 100
-    # N_I = 100
-    # p_plus = np.array([[0.5, 0.2], [0.2, 0.2]])
-    # p_minus = np.array([[0.25, 0.1], [0.1, 0.1]])
-    # j_plus = np.array([[1.1, -1.2], [1.2, -1.0]])
-    # j_minus = np.array([[0.5, -3.0], [1.0, -1.0]])
-    # threshold_E = 0.5
-    # threshold_I = 0.5
-    # network = ClusteredEI_network(Q, N_E, N_I, p_plus, p_minus, j_plus, j_minus, threshold_E, threshold_I)
+    p = np.ones((2, 2)) * 0.2
+    g = 1.2
+    Q = 10
+    # jep=2.0
+    Rj = 0.75  # 0.85
 
-    # parameters of Rost
-    threshold_E = 1.0
-    threshold_I = 1.0
-    #p=0.5*np.array([[0.2, 0.2], [0.2, 0.2]])
-    #p = np.array([[0.2, 0.5], [0.5, 0.5]])
-    p=np.ones((2,2))*0.2
-    g=1.2
-    Q=10
-    #jep=2.0
-    Rj=0.75#0.85
-    N_E=200#40#200
-    N_I=50#10#50
-    # network = WeightClusteredEI_Network(Q, N_E, N_I, p, g, jep, Rj, threshold_E, threshold_I)
-    pep=6.0#1275
-    network = ProbClusteredEI_Network(Q, N_E, N_I, p, g, pep, Rj, threshold_E, threshold_I)
+    pep = 6.0  # 1275
+    jep = 6.0  # 1.0
 
+
+
+    neuron_parameters = {"N_E": 200, "N_I": 50,
+                         "threshold_E": 1.0, "threshold_I": 1.0,
+                        "tau_theta_E": 50000., "theta_q_E": 10.0,
+                         "tau_theta_I": 50000., "theta_q_I": 0.0,
+                         }
+
+    #model without SFA, even if theta_q is unequal to zero
+    #network = ProbClusteredEI_Network(Q, p, g, pep, Rj, neuron_parameters=neuron_parameters, neuron_model=BinaryNetwork.BinaryNeuronPopulation)
+    network = WeightClusteredEI_Network(Q, p, g, jep, Rj, neuron_parameters=neuron_parameters)
 
     network.initialize()
     #print(network.state)
@@ -55,6 +49,4 @@ if __name__ == "__main__":
     plt.xlabel("Time [a.u.]")
     # set title to contain pep and Rj
     plt.title("pep = " + str(pep) + ", Rj = " + str(Rj))
-    # set aspect ratio to auto
-    #plt.gca().set_aspect('auto')
     plt.show()

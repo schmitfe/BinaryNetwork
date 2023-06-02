@@ -29,14 +29,14 @@ class Neuron(NetworkElement):
         self.reference.state[self.view[0]:self.view[1]] = np.random.choice([0, 1], size=self.N)
 
 class BinaryNeuronPopulation(Neuron):
-    def __init__(self, reference, N=1, threshold=1.0, name="Binary Neuron Population"):
+    def __init__(self, reference, N=1, threshold=1.0, name="Binary Neuron Population", **kwargs):
         super().__init__(reference, N, name)
         self.threshold = threshold
     def update(self, weights, state, index=None):
         return np.heaviside(np.sum(weights * state) - self.threshold, 0)
 
 class AdaptiveBinaryNeuronPopulation(BinaryNeuronPopulation):
-    def __init__(self, reference, tau_theta=1, theta_q=0., N=1, threshold=1.0, name="Adaptive Neuron Population"):
+    def __init__(self, reference, tau_theta=1, theta_q=0., N=1, threshold=1.0, name="Adaptive Neuron Population", **kwargs):
         super().__init__(reference, N=N, threshold=threshold, name=name)
 
         #test if DEBUG is set in environment

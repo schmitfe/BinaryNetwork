@@ -1,27 +1,42 @@
 import BinaryNetwork
 import numpy as np
 
-class ClusteredEI_network(BinaryNetwork.BinaryNetwork):
-    def __init__(self, Q, N_E, N_I, p_plus, p_minus, j_plus, j_minus, threshold_E, threshold_I, name="Clustered EI Network"):
+class SFAClusteredEI_network(BinaryNetwork.BinaryNetwork):
+    def __init__(self, Q, p_plus, p_minus, j_plus, j_minus, neuron_parameters, name="Clustered EI Network", neuron_model=BinaryNetwork.AdaptiveBinaryNeuronPopulation):
+        '''
+        :param Q:  Number of clusters
+        :param p_plus: probability of connection between neurons in the same cluster [EE, EI, IE, II]
+        :param p_minus: probability of connection between neurons in different clusters [EE, EI, IE, II]
+        :param j_plus: weight of connection between neurons in the same cluster [EE, EI, IE, II]
+        :param j_minus:  weight of connection between neurons in different clusters [EE, EI, IE, II]
+        :param neuron_parameters: dictionary of neuron parameters (_E will be used for excitatory neurons, _I for inhibitory neurons)
+        :param name: Model name
+        '''
+
         super().__init__(name)
+
+        self.neuron_model = neuron_model
         self.Q = Q
-        self.N_E = N_E
-        self.N_I = N_I
+        self.N_E = neuron_parameters["N_E"]
+        self.N_I = neuron_parameters["N_I"]
+        # filter neuron parameters for excitatory and inhibitory neurons and remove _E and _I
+        self.neuron_parameters_E = {k.replace("_E", ""): v for k, v in neuron_parameters.items() if "_E" in k}
+        self.neuron_parameters_I = {k.replace("_I", ""): v for k, v in neuron_parameters.items() if "_I" in k}
+
         self.p_plus = p_plus # probability of connection between neurons in the same cluster [EE, EI, IE, II]
         self.p_minus = p_minus # probability of connection between neurons in different clusters [EE, EI, IE, II]
         self.j_plus = j_plus # synaptic strength between neurons in the same cluster [EE, EI, IE, II]
         self.j_minus = j_minus # synaptic strength between neurons in different clusters [EE, EI, IE, II]
-        self.threshold_E = threshold_E
-        self.threshold_I = threshold_I
         self.E_pops = []
         self.I_pops = []
         self.other_pops = []
 
+
     def create_populations(self):
         for i in range(self.Q):
-            self.E_pops.append(self.add_population(BinaryNetwork.BinaryNeuronPopulation(self, N=self.N_E, threshold=self.threshold_E, name="E" + str(i))))
+            self.E_pops.append(self.add_population(self.neuron_model(self, **self.neuron_parameters_E, name="E" + str(i))))
         for i in range(self.Q):
-            self.I_pops.append(self.add_population(BinaryNetwork.BinaryNeuronPopulation(self, N=self.N_I, threshold=self.threshold_I, name="I" + str(i))))
+            self.I_pops.append(self.add_population(self.neuron_model(self, **self.neuron_parameters_I, name="I" + str(i))))
 
     def create_synapses(self):
         # add synapses between populations
@@ -69,20 +84,21 @@ def calculateRBN_weights(g, p, N_E, N_I, threshold_E, threshold_I):
     return np.array([[jee, jei], [jie, jii]])
 
 
-class WeightClusteredEI_Network(ClusteredEI_network):
-    def __init__(self, Q, N_E, N_I, p, g, jep, Rj, threshold_E, threshold_I, name="Clustered EI Network"):
-        j=calculateRBN_weights(g, p, N_E, N_I, threshold_E, threshold_I)
+class WeightClusteredEI_Network(SFAClusteredEI_network):
+    def __init__(self, Q, p, g, jep, Rj, neuron_parameters, name="Clustered EI Network", neuron_model=BinaryNetwork.AdaptiveBinaryNeuronPopulation):
+        j=calculateRBN_weights(g, p, neuron_parameters['N_E'], neuron_parameters['N_I'], neuron_parameters['threshold_E'], neuron_parameters['threshold_I'])
         jem=(Q-jep)/(Q-1)
         jip=1+Rj*(jep-1)
         jim=(Q-jip)/(Q-1)
         j_plus=np.multiply(j, np.array([[jep, jip], [jip, jip]]))
         j_minus=np.multiply(j, np.array([[jem, jim], [jim, jim]]))
-        super().__init__(Q, N_E, N_I, p, p, j_plus, j_minus, threshold_E, threshold_I, name)
+        super().__init__(Q, p, p, j_plus, j_minus, neuron_parameters, name=name, neuron_model=neuron_model)
 
 
-class ProbClusteredEI_Network(ClusteredEI_network):
-    def __init__(self, Q, N_E, N_I, p, g, pep, Rj, threshold_E, threshold_I, name="Clustered EI Network"):
-        j=calculateRBN_weights(g, p, N_E, N_I, threshold_E, threshold_I)
+class ProbClusteredEI_Network(SFAClusteredEI_network):
+    def __init__(self, Q, p, g, pep, Rj, neuron_parameters, name="Clustered EI Network", neuron_model=BinaryNetwork.AdaptiveBinaryNeuronPopulation):
+        j = calculateRBN_weights(g, p, neuron_parameters['N_E'], neuron_parameters['N_I'],
+                                 neuron_parameters['threshold_E'], neuron_parameters['threshold_I'])
         pem=(Q-pep)/(Q-1)
         pip=1+Rj*(pep-1)
         pim=(Q-pip)/(Q-1)
@@ -91,6 +107,6 @@ class ProbClusteredEI_Network(ClusteredEI_network):
         p_minus=np.multiply(p, np.array([[pem, pim], [pim, pim]]))
         print(p_plus)
         print(p_minus)
-        super().__init__(Q, N_E, N_I, p_plus, p_minus, j, j, threshold_E, threshold_I, name)
+        super().__init__(Q, p_plus, p_minus, j, j, neuron_parameters, name=name, neuron_model=neuron_model)
 
 
