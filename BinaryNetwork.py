@@ -2,7 +2,7 @@
 # Class for binary networks (state is 0 or 1)
 
 import numpy as np
-from numba import jit
+import os
 
 class NetworkElement:
     def __init__(self, reference, name="Some Network Element"):
@@ -35,16 +35,31 @@ class BinaryNeuronPopulation(Neuron):
     def update(self, weights, state, index=None):
         return np.heaviside(np.sum(weights * state) - self.threshold, 0)
 
-class AdaptiveBinaryNeuronPopulation(Neuron):
+class AdaptiveBinaryNeuronPopulation(BinaryNeuronPopulation):
     def __init__(self, reference, tau_theta=1, theta_q=0., N=1, threshold=1.0, name="Adaptive Neuron Population"):
-        super().__init__(reference, N, name)
-        self.threshold = threshold
-        self.adaptation = np.zeros(N)
-        self.last_update = np.zeros(N)
-        self.tau_theta = tau_theta
-        self.theta_q = theta_q
-    def update(self, weights, state, index):
-        self.adaptation[index] = self.threshold + (self.adaptation[index] - self.threshold) * np.exp(-(self.reference.sim_steps-self.last_update[index]) / self.tau_theta)
+        super().__init__(reference, N=N, threshold=threshold, name=name)
+
+        #test if DEBUG is set in environment
+        if "DEBUG" in os.environ:
+            debug=True
+        else:
+            debug=False
+        if theta_q == 0:
+            if debug:
+                print("AdaptiveBinaryNeuronPopulation: theta_q = 0, using BinaryNeuronPopulation for " + name)
+            self.update = super().update
+        else:
+            if debug:
+                print("AdaptiveBinaryNeuronPopulation: theta_q != 0, using AdaptiveBinaryNeuronPopulation for " + name)
+            self.update = self.update_adaptive
+            self.adaptation = np.zeros(N)
+            self.last_update = np.zeros(N)
+            self.tau_theta = tau_theta
+            self.theta_q = theta_q
+
+    def update_adaptive(self, weights, state, index):
+        self.adaptation[index] = self.threshold + (self.adaptation[index] - self.threshold) * np.exp(
+            -(self.reference.sim_steps - self.last_update[index]) / self.tau_theta)
         value = np.heaviside(np.sum(weights * state) - (self.adaptation[index]), 0)
         if value == 1:
             self.adaptation[index] += self.theta_q
@@ -179,10 +194,3 @@ class BinaryNetwork:
     def run(self, steps=1000):
         for i in range(steps):
             self.update()
-
-
-
-
-
-
-
